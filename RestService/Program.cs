@@ -17,6 +17,8 @@ namespace RestService
                 .UseStartup<Startup>()
                 .UseKestrel(options =>
                 {
+                    options.Limits.MaxConcurrentConnections = 200;
+                    options.Limits.MaxConcurrentUpgradedConnections = 200;
                     options.Listen(IPAddress.Loopback, 5000);
                     options.Listen(IPAddress.Loopback, 5001, listenOptions =>
                     {
