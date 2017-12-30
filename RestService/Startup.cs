@@ -15,7 +15,15 @@ namespace RestService
     {
         public Startup(IConfiguration configuration)
         {
-            Configuration = configuration;
+            // Set up configuration sources.
+            var builder = new ConfigurationBuilder()
+//                .SetBasePath(hostingEnv.ContentRootPath)
+//                .AddCommandLine(Program.Args)
+                .AddJsonFile("appsettings.json")
+//                .AddJsonFile($"appsettings.{hostingEnv.EnvironmentName}.json", optional: true)
+                .AddEnvironmentVariables();
+
+            Configuration = builder.Build();
         }
 
         public IConfiguration Configuration { get; }
@@ -27,6 +35,7 @@ namespace RestService
             services
                 .AddMvcCore()
                 .AddJsonFormatters()
+                //.AddResponseCaching()
                 .AddCors();
         }
 
