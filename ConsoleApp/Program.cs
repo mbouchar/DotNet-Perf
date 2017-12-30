@@ -13,10 +13,17 @@ namespace ConsoleApp
 {
     class Program
     {
+        static private HttpClient client = null;
+
         static void Main(string[] args)
         {
             // SOAP Client
             ServiceReference.ServiceClient soapClient = new ServiceReference.ServiceClient();
+
+            // REST Client
+            var filter = new HttpClientHandler();
+            filter.ServerCertificateCustomValidationCallback = (request, cert, chain, errors) => { return true; };
+            client = new HttpClient(filter);
 
             int NUM_ITERATIONS = 1;
             int CONCURRENT_REQUESTS = 1;
@@ -25,13 +32,13 @@ namespace ConsoleApp
             CONCURRENT_REQUESTS = 1;
             Console.WriteLine("Réveiller les services");
             testSOAP(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
-            testRestIISHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
-            testRestIISHttps(NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testRestReverseProxyHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testRestReverseProxyHttps(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestKestrelHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestKestrelHttps(NUM_ITERATIONS, CONCURRENT_REQUESTS);
 
             NUM_ITERATIONS = 100000;
-            CONCURRENT_REQUESTS = 25;
+            CONCURRENT_REQUESTS = 100;
             Console.WriteLine("Données simples, Authentification Anonyme");
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
@@ -42,13 +49,13 @@ namespace ConsoleApp
             Thread.Sleep(5000);
             testRestKestrelHttps(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
-            testRestIISHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testRestReverseProxyHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
-            testRestIISHttps(NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testRestReverseProxyHttps(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
 
             NUM_ITERATIONS = 5000;
-            CONCURRENT_REQUESTS = 50;
+            CONCURRENT_REQUESTS = 25;
             Console.WriteLine("Larges données, Authentification Anonyme");
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
             testSOAPLargeData(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
@@ -57,10 +64,11 @@ namespace ConsoleApp
             Thread.Sleep(5000);
             testRESTKestrelHttpsLargeData(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
-            testRESTIISHttpLargeData(NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testRESTReverseProxyHttpLargeData(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
-            testRESTIISHttpsLargeData(NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testRESTReverseProxyHttpsLargeData(NUM_ITERATIONS, CONCURRENT_REQUESTS);
 
+            client.Dispose();
             Console.ReadLine();
         }
 
@@ -120,10 +128,8 @@ namespace ConsoleApp
             Console.WriteLine("SOAP (Large Data): " + watch.ElapsedMilliseconds);
         }
 
-        static void testRestIISHttp(int num_iterations, int concurrent_requests)
+        static void testRestReverseProxyHttp(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
-
             var watch = Stopwatch.StartNew();
             var tasks = new Task<string>[concurrent_requests];
             var i = 0;
@@ -148,14 +154,11 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
-            Console.WriteLine("REST HTTP .Net Core 2.0 IIS: " + watch.ElapsedMilliseconds);
+            Console.WriteLine("REST HTTP .Net Core 2.0 (Reverse Proxy): " + watch.ElapsedMilliseconds);
         }
 
-        static void testRestIISHttps(int num_iterations, int concurrent_requests)
+        static void testRestReverseProxyHttps(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
-
             var watch = Stopwatch.StartNew();
             var tasks = new Task<string>[concurrent_requests];
             var i = 0;
@@ -180,14 +183,11 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
-            Console.WriteLine("REST HTTPS .Net Core 2.0 IIS: " + watch.ElapsedMilliseconds);
+            Console.WriteLine("REST HTTPS .Net Core 2.0 Reverse Proxy: " + watch.ElapsedMilliseconds);
         }
 
         static void testRestKestrelHttp(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
-
             var watch = Stopwatch.StartNew();
             var tasks = new Task<string>[concurrent_requests];
             var i = 0;
@@ -212,15 +212,11 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
             Console.WriteLine("REST HTTP .Net Core 2.0 Kestrel: " + watch.ElapsedMilliseconds);
         }
 
         static void testRestKestrelHttps(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
-            var serializer = new DataContractJsonSerializer(typeof(List<LargeDataStructure>));
-
             var watch = Stopwatch.StartNew();
             var tasks = new Task<string>[concurrent_requests];
             var i = 0;
@@ -245,13 +241,11 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
             Console.WriteLine("REST HTTPS .Net Core 2.0 Kestrel: " + watch.ElapsedMilliseconds);
         }
 
-        static void testRESTIISHttpLargeData(int num_iterations, int concurrent_requests)
+        static void testRESTReverseProxyHttpLargeData(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
             var serializer = new DataContractJsonSerializer(typeof(List<LargeDataStructure>));
 
             var watch = Stopwatch.StartNew();
@@ -278,13 +272,11 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
-            Console.WriteLine("REST HTTP .Net Core 2.0 IIS (Large Data): " + watch.ElapsedMilliseconds);
+            Console.WriteLine("REST HTTP .Net Core 2.0 ReverseProxy (Large Data): " + watch.ElapsedMilliseconds);
         }
 
-        static void testRESTIISHttpsLargeData(int num_iterations, int concurrent_requests)
+        static void testRESTReverseProxyHttpsLargeData(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
             var serializer = new DataContractJsonSerializer(typeof(List<LargeDataStructure>));
 
             var watch = Stopwatch.StartNew();
@@ -311,13 +303,11 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
-            Console.WriteLine("REST HTTPS .Net Core 2.0 IIS (Large Data): " + watch.ElapsedMilliseconds);
+            Console.WriteLine("REST HTTPS .Net Core 2.0 ReverseProxy (Large Data): " + watch.ElapsedMilliseconds);
         }
 
         static void testRESTKestrelHttpLargeData(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
             var serializer = new DataContractJsonSerializer(typeof(List<LargeDataStructure>));
 
             var watch = Stopwatch.StartNew();
@@ -344,13 +334,11 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
             Console.WriteLine("REST HTTP .Net Core 2.0 Kestrel (Large Data): " + watch.ElapsedMilliseconds);
         }
 
         static void testRESTKestrelHttpsLargeData(int num_iterations, int concurrent_requests)
         {
-            var client = new HttpClient();
             var serializer = new DataContractJsonSerializer(typeof(List<LargeDataStructure>));
 
             var watch = Stopwatch.StartNew();
@@ -377,7 +365,6 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            client.Dispose();
             Console.WriteLine("REST HTTPS .Net Core 2.0 Kestrel (Large Data): " + watch.ElapsedMilliseconds);
         }
     }
