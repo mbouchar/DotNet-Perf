@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using ZeroFormatter;
 
 namespace ConsoleApp.Models
 {
+    [ZeroFormattable]
     public class LargeDataStructure
     {
         public string FirstName;

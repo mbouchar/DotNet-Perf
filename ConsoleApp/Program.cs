@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Runtime.Serialization.Json;
 using ConsoleApp.Models;
 using System.IO;
+using ZeroFormatter;
 
 namespace ConsoleApp
 {
@@ -15,10 +16,19 @@ namespace ConsoleApp
     {
         static private HttpClient client = null;
 
+        /* 
+         * set ASPNETCORE_ENVIRONMENT=Production
+         * dotnet build -c Release
+         * dotnet run -c Release --no-build --no-restore
+         * 
+         */
         static void Main(string[] args)
         {
             // SOAP Client
-            ServiceReference.ServiceClient soapClient = new ServiceReference.ServiceClient();
+            ServiceReference.ServiceClient soapClient = new ServiceReference.ServiceClient(ServiceReference.ServiceClient.EndpointConfiguration.ServiceWithAnonymousAuthentication);
+//            ServiceReference.ServiceClient soapClientHttps = new ServiceReference.ServiceClient(
+//                ServiceReference.ServiceClient.EndpointConfiguration.ServiceWithAnonymousAuthentication,
+//                "https://localhost/WcfService/Service.svc");
 
             // REST Client
             var filter = new HttpClientHandler();
@@ -31,7 +41,8 @@ namespace ConsoleApp
             NUM_ITERATIONS = 100;
             CONCURRENT_REQUESTS = 1;
             Console.WriteLine("Réveiller les services");
-            testSOAP(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testSOAP(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (HTTP)");
+   //         testSOAP(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (HTTPS)");
             testRestReverseProxyHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestReverseProxyHttps(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestKestrelHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
@@ -43,7 +54,8 @@ namespace ConsoleApp
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
             // Test réel
-            testSOAP(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testSOAP(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (HTTP)");
+     //       testSOAP(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (HTTPS)");
             Thread.Sleep(5000);
             testRestKestrelHttp(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
@@ -58,7 +70,8 @@ namespace ConsoleApp
             CONCURRENT_REQUESTS = 25;
             Console.WriteLine("Larges données, Authentification Anonyme");
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
-            testSOAPLargeData(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            testSOAPLargeData(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (Large Data, HTTP)");
+     //       testSOAPLargeData(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (Large Data, HTTPS)");
             Thread.Sleep(5000);
             testRESTKestrelHttpLargeData(NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Thread.Sleep(5000);
@@ -72,7 +85,7 @@ namespace ConsoleApp
             Console.ReadLine();
         }
 
-        static void testSOAP(ServiceReference.ServiceClient client, int num_iterations, int concurrent_requests)
+        static void testSOAP(ServiceReference.ServiceClient client, int num_iterations, int concurrent_requests, string identifier)
         {
             var watch = Stopwatch.StartNew();
             var tasks = new Task<string>[concurrent_requests];
@@ -97,10 +110,10 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            Console.WriteLine("SOAP: " + watch.ElapsedMilliseconds);
+            Console.WriteLine(identifier + ": " + watch.ElapsedMilliseconds);
         }
 
-        static void testSOAPLargeData(ServiceReference.ServiceClient client, int num_iterations, int concurrent_requests)
+        static void testSOAPLargeData(ServiceReference.ServiceClient client, int num_iterations, int concurrent_requests, string identifier)
         {
             var watch = Stopwatch.StartNew();
             var tasks = new Task<ServiceReference.LargeDataStructures>[concurrent_requests];
@@ -125,7 +138,7 @@ namespace ConsoleApp
             }
             Task.WaitAll(tasks);
             watch.Stop();
-            Console.WriteLine("SOAP (Large Data): " + watch.ElapsedMilliseconds);
+            Console.WriteLine(identifier + ": " + watch.ElapsedMilliseconds);
         }
 
         static void testRestReverseProxyHttp(int num_iterations, int concurrent_requests)
@@ -258,7 +271,8 @@ namespace ConsoleApp
                 if (n >= concurrent_requests)
                 {
                     pos = Task.WaitAny(tasks);
-                    var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    //var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    var list = ZeroFormatterSerializer.Deserialize<List<LargeDataStructure>>(tasks[pos].Result);
                     tasks[pos].Dispose();
                     tasks[pos] = null;
                     n--;
@@ -289,7 +303,8 @@ namespace ConsoleApp
                 if (n >= concurrent_requests)
                 {
                     pos = Task.WaitAny(tasks);
-                    var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    //var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    var list = ZeroFormatterSerializer.Deserialize<List<LargeDataStructure>>(tasks[pos].Result);
                     tasks[pos].Dispose();
                     tasks[pos] = null;
                     n--;
@@ -320,7 +335,8 @@ namespace ConsoleApp
                 if (n >= concurrent_requests)
                 {
                     pos = Task.WaitAny(tasks);
-                    var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    //var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    var list = ZeroFormatterSerializer.Deserialize<List<LargeDataStructure>>(tasks[pos].Result);
                     tasks[pos].Dispose();
                     tasks[pos] = null;
                     n--;
@@ -351,7 +367,8 @@ namespace ConsoleApp
                 if (n >= concurrent_requests)
                 {
                     pos = Task.WaitAny(tasks);
-                    var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    //var list = serializer.ReadObject(tasks[pos].Result) as List<LargeDataStructure>;
+                    var list = ZeroFormatterSerializer.Deserialize<List<LargeDataStructure>>(tasks[pos].Result);
                     tasks[pos].Dispose();
                     tasks[pos] = null;
                     n--;
