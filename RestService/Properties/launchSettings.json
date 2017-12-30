@@ -29,6 +29,10 @@
         "ASPNETCORE_ENVIRONMENT": "Production"
       },
       "applicationUrl": "http://localhost:62142/"
+    },
+    "IIS": {
+      "commandName": "IIS",
+      "commandLineArgs": "run -c Production --no-build"
     }
   }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ConsoleApp
@@ -20,25 +21,45 @@ namespace ConsoleApp
             int NUM_ITERATIONS = 1;
             int CONCURRENT_REQUESTS = 1;
 
-            NUM_ITERATIONS = 100000;
-            CONCURRENT_REQUESTS = 25;
-            Console.WriteLine("Données simples, Authentification Anonyme");
-            Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
-            //testSOAPSync(soapClient, NUM_ITERATIONS);
+            NUM_ITERATIONS = 100;
+            CONCURRENT_REQUESTS = 1;
+            Console.WriteLine("Réveiller les services");
             testSOAPAsync(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestIISHttp(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestIISHttps(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestKestrelHttp(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
             testRestKestrelHttps(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
 
+            NUM_ITERATIONS = 100000;
+            CONCURRENT_REQUESTS = 25;
+            Console.WriteLine("Données simples, Authentification Anonyme");
+            Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
+            //testSOAPSync(soapClient, NUM_ITERATIONS);
+            Thread.Sleep(5000);
+            // Test réel
+            testSOAPAsync(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
+            testRestIISHttp(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
+            testRestIISHttps(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
+            testRestKestrelHttp(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
+            testRestKestrelHttps(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
+
             NUM_ITERATIONS = 5000;
             CONCURRENT_REQUESTS = 15;
             Console.WriteLine("Larges données, Authentification Anonyme");
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
             testSOAPLargeDataAsync(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
             testRESTIISHttpLargeDataAsync(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
             testRESTIISHttpsLargeDataAsync(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
             testRESTKestrelHttpLargeDataAsync(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
+            Thread.Sleep(5000);
             testRESTKestrelHttpsLargeDataAsync(restClient, NUM_ITERATIONS, CONCURRENT_REQUESTS);
             Console.ReadLine();
         }
