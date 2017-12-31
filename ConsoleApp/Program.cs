@@ -10,6 +10,7 @@ using ConsoleApp.Models;
 using System.IO;
 using Newtonsoft.Json;
 using System.Runtime.InteropServices;
+using System.Net;
 
 namespace ConsoleApp
 {
@@ -55,9 +56,11 @@ namespace ConsoleApp
             }
 
             // REST Client
+            System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             var filter = new HttpClientHandler();
             filter.ServerCertificateCustomValidationCallback = (request, cert, chain, errors) => { return true; };
             client = new HttpClient(filter);
+            client.Timeout = new TimeSpan(0, 1, 0);
 
             int NUM_ITERATIONS = 0;
             int CONCURRENT_REQUESTS = 0;
@@ -86,7 +89,7 @@ namespace ConsoleApp
 
             Console.WriteLine("Données simples, Authentification Anonyme");
             NUM_ITERATIONS = 100000;
-            CONCURRENT_REQUESTS = 100;
+            CONCURRENT_REQUESTS = 50;
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
             if (testWCF)
             {
@@ -95,13 +98,13 @@ namespace ConsoleApp
 //            testSOAP(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (HTTPS)");
 //            Thread.Sleep(5000);
             }
-            testRest(restReverseProxyHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Reverse Proxy)");
-            Thread.Sleep(5000);
-            testRest(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Reverse Proxy)");
-            Thread.Sleep(5000);
             testRest(restKestrelHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Kestrel)");
             Thread.Sleep(5000);
             testRest(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Kestrel)");
+            Thread.Sleep(5000);
+            testRest(restReverseProxyHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Reverse Proxy)");
+            Thread.Sleep(5000);
+            testRest(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Reverse Proxy)");
             Thread.Sleep(5000);
 
             /* 
@@ -110,22 +113,23 @@ namespace ConsoleApp
 
             Console.WriteLine("Larges données, Authentification Anonyme");
             NUM_ITERATIONS = 5000;
-            CONCURRENT_REQUESTS = 25;
+            CONCURRENT_REQUESTS = 15;
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
             if (testWCF)
             {
                 testSOAPLargeData(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (Large Data, HTTP)");
-                Thread.Sleep(5000);
+                Thread.Sleep(15000);
 //            testSOAPLargeData(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (Large Data, HTTPS)");
-//            Thread.Sleep(5000);
+//            Thread.Sleep(15000);
             }
-            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Large Data, Reverse Proxy)");
-            Thread.Sleep(5000);
-            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Large Data, Reverse Proxy)");
-            Thread.Sleep(5000);
             testRestLargeData(restKestrelHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Large Data, Kestrel)");
-            Thread.Sleep(5000);
+            Thread.Sleep(15000);
             testRestLargeData(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Large Data, Kestrel)");
+            Thread.Sleep(15000);
+            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Large Data, Reverse Proxy)");
+            Thread.Sleep(15000);
+            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Large Data, Reverse Proxy)");
+            Thread.Sleep(15000);
 
             client.Dispose();
             Console.ReadLine();
@@ -137,10 +141,13 @@ namespace ConsoleApp
 
             var requests_per_thread = num_iterations / concurrent_requests;
             var result = Parallel.For(0, concurrent_requests, (i, state) => {
-                var task = client.GetDataAsync("ping");
-                task.Wait();
-                var value = task.Result as string;
-                task.Dispose();
+                for (var j = 0; j < requests_per_thread; j++)
+                {
+                    var task = client.GetDataAsync("ping");
+                    task.Wait();
+                    var value = task.Result as string;
+                    task.Dispose();
+                }
             });
             if (!result.IsCompleted)
             {
@@ -158,10 +165,13 @@ namespace ConsoleApp
 
             var requests_per_thread = num_iterations / concurrent_requests;
             var result = Parallel.For(0, concurrent_requests, (i, state) => {
-                var task = client.GetLargeDataAsync();
-                task.Wait();
-                var data = task.Result as ServiceReference.LargeDataStructures;
-                task.Dispose();
+                for (var j = 0; j < requests_per_thread; j++)
+                {
+                    var task = client.GetLargeDataAsync();
+                    task.Wait();
+                    var data = task.Result as ServiceReference.LargeDataStructures;
+                    task.Dispose();
+                }
             });
             if (!result.IsCompleted)
             {
@@ -181,10 +191,18 @@ namespace ConsoleApp
             var result = Parallel.For(0, concurrent_requests, (i, state) => {
                 for (var j = 0; j < requests_per_thread; j++)
                 {
-                    var task = client.GetStringAsync(baseUrl + "/api/values/");
-                    task.Wait();
-                    var data = task.Result;
-                    task.Dispose();
+                    try
+                    {
+                        var task = client.GetStringAsync(baseUrl + "/api/values/");
+                        task.Wait();
+                        var data = task.Result;
+                        task.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Nouvel essai
+                        j--;
+                    }
                 }
             });
             if (!result.IsCompleted)
@@ -221,10 +239,18 @@ namespace ConsoleApp
             var result = Parallel.For(0, concurrent_requests, (i, state) => {
                 for (var j = 0; j < requests_per_thread; j++)
                 {
-                    var task = client.GetStreamAsync(baseUrl + "/api/largevalues/");
-                    task.Wait();
-                    var data = parseJson(task.Result);
-                    task.Dispose();
+                    try
+                    {
+                        var task = client.GetStreamAsync(baseUrl + "/api/largevalues/");
+                        task.Wait();
+                        var data = parseJson(task.Result);
+                        task.Dispose();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Nouvel essai
+                        j--;
+                    }
                 }
             });
             if (!result.IsCompleted)
