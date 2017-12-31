@@ -1,8 +1,5 @@
-﻿using ZeroFormatter;
-
-namespace ConsoleApp.Models
+﻿namespace ConsoleApp.Models
 {
-    [ZeroFormattable]
     public class LargeDataStructure
     {
         public string FirstName;
