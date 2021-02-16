@@ -1,24 +1,24 @@
-﻿using Microsoft.AspNetCore.Builder;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi.Models;
 
-namespace RestService
+namespace RestService5
 {
     public class Startup
     {
         public Startup(IConfiguration configuration)
         {
-            // Set up configuration sources.
-            var builder = new ConfigurationBuilder()
-//                .SetBasePath(hostingEnv.ContentRootPath)
-//                .AddCommandLine(Program.Args)
-                .AddJsonFile("appsettings.json")
-//                .AddJsonFile($"appsettings.{hostingEnv.EnvironmentName}.json", optional: true)
-                .AddEnvironmentVariables();
-
-            Configuration = builder.Build();
+            Configuration = configuration;
         }
 
         public IConfiguration Configuration { get; }
@@ -26,15 +26,12 @@ namespace RestService
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            //services.AddMvc();
+
             services.AddControllers();
-            /*services.AddSwaggerGen(c =>
+            services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "RestService5", Version = "v1" });
-            });*/
-            services.AddMvcCore();
-            //.AddResponseCaching()
-            services.AddCors();
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -43,13 +40,16 @@ namespace RestService
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                //app.UseSwagger();
-                //app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "RestService5 v1"));
+                app.UseSwagger();
+                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "RestService5 v1"));
             }
 
-            //app.UseHttpsRedirection();
+            app.UseHttpsRedirection();
+
             app.UseRouting();
-            //app.UseAuthorization();
+
+            app.UseAuthorization();
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();

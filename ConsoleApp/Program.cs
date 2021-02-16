@@ -19,6 +19,7 @@ namespace ConsoleApp
         private static HttpClient client = null;
 
         private static string DEFAULT_HOSTNAME = "localhost";
+        private static string DOTNET_VERSION = "3.1";
 
         /* 
          * Génération du certificat pour Kestrel:
@@ -38,21 +39,27 @@ namespace ConsoleApp
             if (args.Length > 0)
                 hostname = args[0];
 
-            string restReverseProxyHttpUrl = "http://" + hostname + "/RestService";
-            string restReverseProxyHttpsUrl = "https://" + hostname + "/RestService";
-            string restKestrelHttpUrl = "http://" + hostname + ":5000";
-            string restKestrelHttpsUrl = "https://" + hostname + ":5001";
+            string restReverseProxyHttpUrl = $"http://{hostname}/RestService";
+            string restReverseProxyHttpsUrl = $"https://{hostname}/RestService";
+            string restKestrelHttpUrl = $"http://{hostname}:5000";
+            string restKestrelHttpsUrl = $"https://{hostname}:5001";
+
+            int NUM_ITERATIONS = 0;
+            int CONCURRENT_REQUESTS = 0;
 
             bool testWCF = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-            ServiceReference.ServiceClient soapClient = null;
+            bool testReverseProxy = false;
+            bool testHttps = false;
 
-            if (testWCF)
-            {
+            ServiceReference.ServiceClient soapClient = null;
+            if (testWCF) {
                 // SOAP Client
                 soapClient = new ServiceReference.ServiceClient(ServiceReference.ServiceClient.EndpointConfiguration.ServiceWithAnonymousAuthentication);
 //            ServiceReference.ServiceClient soapClientHttps = new ServiceReference.ServiceClient(
 //                ServiceReference.ServiceClient.EndpointConfiguration.ServiceWithAnonymousAuthentication,
 //                "https://localhost/WcfService/Service.svc");
+            } else {
+                Console.WriteLine("OS is not Windows, skipping WCF test");
             }
 
             // REST Client
@@ -62,25 +69,26 @@ namespace ConsoleApp
             client = new HttpClient(filter);
             client.Timeout = new TimeSpan(0, 1, 0);
 
-            int NUM_ITERATIONS = 0;
-            int CONCURRENT_REQUESTS = 0;
-
             /*
              * Réveiller les services
              */
 
             NUM_ITERATIONS = 500;
             CONCURRENT_REQUESTS = 10;
-            if (testWCF)
-            {
+            if (testWCF) {
                 testSOAP(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
 //            testSOAP(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
             }
-            testRest(restReverseProxyHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
-            testRestLargeData(restReverseProxyHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
-            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
+            if (testReverseProxy) {
+                testRestLargeData(restReverseProxyHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
+                if (testHttps) {
+                    testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
+                }
+            }
             testRestLargeData(restKestrelHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
-            testRestLargeData(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
+            if (testHttps) {
+                testRestLargeData(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, null);
+            }
             Thread.Sleep(5000);
 
             /*
@@ -91,21 +99,26 @@ namespace ConsoleApp
             NUM_ITERATIONS = 100000;
             CONCURRENT_REQUESTS = 50;
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
-            if (testWCF)
-            {
+            if (testWCF) {
                 testSOAP(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (HTTP)");
                 Thread.Sleep(5000);
 //            testSOAP(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (HTTPS)");
 //            Thread.Sleep(5000);
             }
-            testRest(restKestrelHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Kestrel)");
+            if (testReverseProxy) {
+                testRest(restReverseProxyHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTP, Reverse Proxy)");
+                Thread.Sleep(5000);
+                if (testHttps) {
+                    testRest(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTPS, Reverse Proxy)");
+                    Thread.Sleep(5000);
+                }
+            }
+            testRest(restKestrelHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTP, Kestrel)");
             Thread.Sleep(5000);
-            testRest(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Kestrel)");
-            Thread.Sleep(5000);
-            testRest(restReverseProxyHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Reverse Proxy)");
-            Thread.Sleep(5000);
-            testRest(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Reverse Proxy)");
-            Thread.Sleep(5000);
+            if (testHttps) {
+                testRest(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTPS, Kestrel)");
+                Thread.Sleep(5000);
+            }
 
             /* 
              * Larges données (20 Ko)
@@ -115,21 +128,26 @@ namespace ConsoleApp
             NUM_ITERATIONS = 5000;
             CONCURRENT_REQUESTS = 15;
             Console.WriteLine("Nombre d'itérations: " + NUM_ITERATIONS + ", Requêtes concurrentes: " + CONCURRENT_REQUESTS);
-            if (testWCF)
-            {
+            if (testWCF) {
                 testSOAPLargeData(soapClient, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (Large Data, HTTP)");
                 Thread.Sleep(15000);
 //            testSOAPLargeData(soapClientHttps, NUM_ITERATIONS, CONCURRENT_REQUESTS, "SOAP (Large Data, HTTPS)");
 //            Thread.Sleep(15000);
             }
-            testRestLargeData(restKestrelHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Large Data, Kestrel)");
+            if (testReverseProxy) {
+                testRestLargeData(restKestrelHttpUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTP, Large Data, Kestrel)");
+                Thread.Sleep(15000);
+                if (testHttps) {
+                    testRestLargeData(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTPS, Large Data, Kestrel)");
+                    Thread.Sleep(15000);
+                }
+            }
+            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTP, Large Data, Reverse Proxy)");
             Thread.Sleep(15000);
-            testRestLargeData(restKestrelHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Large Data, Kestrel)");
-            Thread.Sleep(15000);
-            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTP, Large Data, Reverse Proxy)");
-            Thread.Sleep(15000);
-            testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, "REST .Net Core 2.0 (HTTPS, Large Data, Reverse Proxy)");
-            Thread.Sleep(15000);
+            if (testHttps) {
+                testRestLargeData(restReverseProxyHttpsUrl, NUM_ITERATIONS, CONCURRENT_REQUESTS, $"REST .Net Core {DOTNET_VERSION} (HTTPS, Large Data, Reverse Proxy)");
+                Thread.Sleep(15000);
+            }
 
             client.Dispose();
             Console.ReadLine();
@@ -156,7 +174,7 @@ namespace ConsoleApp
 
             watch.Stop();
             if (identifier != null)
-                Console.WriteLine(identifier + ": " + watch.ElapsedMilliseconds);
+                Console.WriteLine($"{identifier} : {watch.ElapsedMilliseconds} millisecondes");
         }
 
         private static void testSOAPLargeData(ServiceReference.ServiceClient client, int num_iterations, int concurrent_requests, string identifier)
@@ -180,7 +198,7 @@ namespace ConsoleApp
 
             watch.Stop();
             if (identifier != null)
-                Console.WriteLine(identifier + ": " + watch.ElapsedMilliseconds);
+                Console.WriteLine($"{identifier} : {watch.ElapsedMilliseconds} millisecondes");
         }
 
         private static void testRest(string baseUrl, int num_iterations, int concurrent_requests, string identifier)
@@ -212,7 +230,7 @@ namespace ConsoleApp
 
             watch.Stop();
             if (identifier != null)
-                Console.WriteLine(identifier + ": " + watch.ElapsedMilliseconds);
+                Console.WriteLine($"{identifier} '{baseUrl}' : {watch.ElapsedMilliseconds}");
         }
 
         private static List<LargeDataStructure> parseJson(Stream data)
@@ -260,7 +278,7 @@ namespace ConsoleApp
 
             watch.Stop();
             if (identifier != null)
-                Console.WriteLine(identifier + ": " + watch.ElapsedMilliseconds);
+                Console.WriteLine($"{identifier} '{baseUrl}' : {watch.ElapsedMilliseconds}");
         }
     }
 }

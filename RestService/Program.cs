@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
 namespace RestService
 {
@@ -8,10 +9,10 @@ namespace RestService
     {
         public static void Main(string[] args)
         {
-            BuildWebHost(args).Run();
+            CreateHostBuilder(args).Build().Run();
         }
 
-        public static IWebHost BuildWebHost(string[] args)
+        public static IHostBuilder CreateHostBuilder(string[] args)
         {
 /*            var config = new ConfigurationBuilder()
                 .AddCommandLine(args)
@@ -19,21 +20,23 @@ namespace RestService
                 .AddJsonFile("hosting.json", optional: true)
                 .Build();*/
 
-            return WebHost.CreateDefaultBuilder(args)
+            return Host.CreateDefaultBuilder(args)
+                       .ConfigureWebHostDefaults(webBuilder =>
+                       {
+                            webBuilder.UseStartup<Startup>();
+                            webBuilder.UseKestrel(options =>
+                            {
+                                options.Limits.MaxConcurrentConnections = 500;
+                                options.Limits.MaxConcurrentUpgradedConnections = 500;
+                                options.Listen(IPAddress.Any, 5000);
+                                /*options.Listen(IPAddress.Any, 5001, listenOptions =>
+                                {
+                                    listenOptions.UseHttps("localhost.pfx", "localhost");
+                                });*/
+                            });
+                        });
 //                .UseIISIntegration()
-                .UseLibuv(opts => opts.ThreadCount = 4)
-                .UseStartup<Startup>()
-                .UseKestrel(options =>
-                {
-                    options.Limits.MaxConcurrentConnections = 500;
-                    options.Limits.MaxConcurrentUpgradedConnections = 500;
-                    options.Listen(IPAddress.Any, 5000);
-                    options.Listen(IPAddress.Any, 5001, listenOptions =>
-                    {
-                        listenOptions.UseHttps("localhost.pfx", "localhost");
-                    });
-                })
-                .Build();
+//                .UseLibuv(opts => opts.ThreadCount = 4)
         }
     }
 }
