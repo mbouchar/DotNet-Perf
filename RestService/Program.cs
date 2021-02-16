@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
+using RedHat.AspNetCore.Server.Kestrel.Transport.Linux;
 
 namespace RestService
 {
@@ -24,19 +25,25 @@ namespace RestService
                        .ConfigureWebHostDefaults(webBuilder =>
                        {
                             webBuilder.UseStartup<Startup>();
-                            webBuilder.UseKestrel(options =>
+/*                            webBuilder.UseKestrel(options =>
                             {
                                 options.Limits.MaxConcurrentConnections = 500;
                                 options.Limits.MaxConcurrentUpgradedConnections = 500;
-                                options.Listen(IPAddress.Any, 5000);
                                 /*options.Listen(IPAddress.Any, 5001, listenOptions =>
                                 {
                                     listenOptions.UseHttps("localhost.pfx", "localhost");
                                 });*/
-                            });
+                            //});
+                            webBuilder.UseLinuxTransport();
+                            // Intégration Socket
+                            //webBuilder.UseSockets();
+                            //webBuilder.UseUrls("http://0.0.0.0:5000");
+                            // Intégration IIS out-of-process
+                            //webBuilder.UseIISIntegration();
+                            // Intégration IIS in-process
+                            //webBuilder.UseIIS();
+                            webBuilder.UseUrls("http://0.0.0.0:5000");
                         });
-//                .UseIISIntegration()
-//                .UseLibuv(opts => opts.ThreadCount = 4)
         }
     }
 }

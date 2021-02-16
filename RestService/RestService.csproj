@@ -14,4 +14,8 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="RedHat.AspNetCore.Server.Kestrel.Transport.Linux" Version="3.1.0-210111.1633" />
+  </ItemGroup>
+
 </Project>
